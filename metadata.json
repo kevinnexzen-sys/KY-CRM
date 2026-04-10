@@ -1,0 +1,9 @@
+{
+  "name": "DealPipeline CRM",
+  "description": "A comprehensive CRM for field service operations management, featuring AI-driven workflows, technician dispatch, and real-time communication.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
