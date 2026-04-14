@@ -6,8 +6,8 @@ import { generateAIResponse } from '../services/geminiService';
 
 // --- INITIAL MOCK DATA EXTENSIONS ---
 const INITIAL_INVOICES: Invoice[] = [
-  { id: 'INV-1001', workOrderId: 'WO-2024-001', client: 'Alice Johnson', date: 'Mar 05, 2026', amount: '$1,250.00', laborCost: 800, partsCost: 450, status: 'PAID' },
-  { id: 'INV-1002', workOrderId: 'WO-2024-004', client: 'Delta Corp', date: 'Mar 03, 2026', amount: '$850.00', laborCost: 500, partsCost: 350, status: 'PENDING' },
+  { id: 'INV-1001', workOrderId: 'WO-2024-001', client: 'Alice Johnson', date: 'Mar 05, 2026', amount: '$1,250.00', laborCost: 800, partsCost: 450, status: 'PAID', type: 'INVOICE' },
+  { id: 'INV-1002', workOrderId: 'WO-2024-004', client: 'Delta Corp', date: 'Mar 03, 2026', amount: '$850.00', laborCost: 500, partsCost: 350, status: 'PENDING', type: 'INVOICE' },
 ];
 
 const INITIAL_CLIENTS: Customer[] = [
@@ -165,8 +165,8 @@ interface DataContextType {
   workOrders: WorkOrder[];
   selectedWorkOrderId: string | null;
   setSelectedWorkOrderId: (id: string | null) => void;
-  addWorkOrder: (order: WorkOrder) => void;
-  updateWorkOrder: (id: string, updates: Partial<WorkOrder>) => void;
+  addWorkOrder: (order: WorkOrder) => Promise<void>;
+  updateWorkOrder: (id: string, updates: Partial<WorkOrder>) => Promise<void>;
   autoAssignTechnician: (workOrder: WorkOrder) => string | undefined;
 
   technicians: Technician[];
@@ -176,7 +176,8 @@ interface DataContextType {
 
   invoices: Invoice[];
   addInvoice: (invoice: Invoice) => void;
-  generateInvoice: (workOrderId: string) => void;
+  updateInvoice: (id: string, updates: Partial<Invoice>) => void;
+  generateInvoice: (workOrderId: string) => Promise<void>;
 
   clients: Customer[];
   addClient: (client: Customer) => void;
@@ -676,68 +677,107 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateEmailTemplate = (id: string, updates: Partial<EmailTemplate>) => setEmailTemplates(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
   const deleteEmailTemplate = (id: string) => setEmailTemplates(prev => prev.filter(t => t.id !== id));
 
-  const addWorkOrder = (order: WorkOrder) => {
-    const newOrder = {
-      ...order,
-      createdAt: new Date().toISOString(),
-      history: [{
-        id: `H${Date.now()}`,
-        userId: currentUser?.id || 'system',
-        userName: currentUser?.name || 'System',
-        action: 'Created Work Order',
-        timestamp: new Date().toISOString()
-      }]
-    };
-    setWorkOrders(prev => [newOrder, ...prev]);
+  const addWorkOrder = async (order: WorkOrder): Promise<void> => {
+    try {
+      // Simulate API call
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          // Simulate occasional network error for demonstration (can be removed in production)
+          if (Math.random() < 0.05) reject(new Error('Network connection failed'));
+          else resolve(true);
+        }, 600);
+      });
 
-    // Trigger notification
-    addNotification({
-      userId: 'all',
-      title: 'New Work Order Created',
-      message: `Work Order ${newOrder.id} has been created for ${newOrder.customerName}.`,
-      type: 'info',
-      link: `/work-orders/${newOrder.id}`
-    });
-  };
-
-  const updateWorkOrder = (id: string, updates: Partial<WorkOrder>) => {
-    setWorkOrders(prev => prev.map(wo => {
-      if (wo.id === id) {
-        const historyEntry: AuditLog = {
+      const newOrder = {
+        ...order,
+        createdAt: new Date().toISOString(),
+        history: [{
           id: `H${Date.now()}`,
           userId: currentUser?.id || 'system',
           userName: currentUser?.name || 'System',
-          action: 'Updated Work Order',
-          timestamp: new Date().toISOString(),
-          details: Object.keys(updates).map(key => `${key}: ${updates[key as keyof WorkOrder]}`).join(', ')
-        };
+          action: 'Created Work Order',
+          timestamp: new Date().toISOString()
+        }]
+      };
+      setWorkOrders(prev => [newOrder, ...prev]);
 
-        // Trigger notification for assignment
-        if (updates.assignedTechId && updates.assignedTechId !== wo.assignedTechId) {
-          addNotification({
-            userId: updates.assignedTechId,
-            title: 'New Job Assignment',
-            message: `You have been assigned to Work Order ${wo.id} for ${wo.customerName}.`,
-            type: 'success',
-            link: `/work-orders/${wo.id}`
-          });
+      // Trigger notification
+      addNotification({
+        userId: 'all',
+        title: 'New Work Order Created',
+        message: `Work Order ${newOrder.id} has been created for ${newOrder.customerName}.`,
+        type: 'info',
+        link: `/work-orders/${newOrder.id}`
+      });
+    } catch (error) {
+      console.error("Failed to add work order:", error);
+      addNotification({
+        userId: currentUser?.id || 'all',
+        title: 'Error Creating Work Order',
+        message: error instanceof Error ? error.message : 'There was a problem saving the work order. Please try again.',
+        type: 'error'
+      });
+      throw error;
+    }
+  };
+
+  const updateWorkOrder = async (id: string, updates: Partial<WorkOrder>): Promise<void> => {
+    try {
+      // Simulate API call
+      await new Promise((resolve, reject) => {
+        setTimeout(() => {
+          if (Math.random() < 0.05) reject(new Error('Failed to sync with server'));
+          else resolve(true);
+        }, 400);
+      });
+
+      setWorkOrders(prev => prev.map(wo => {
+        if (wo.id === id) {
+          const historyEntry: AuditLog = {
+            id: `H${Date.now()}`,
+            userId: currentUser?.id || 'system',
+            userName: currentUser?.name || 'System',
+            action: 'Updated Work Order',
+            timestamp: new Date().toISOString(),
+            details: Object.keys(updates).map(key => `${key}: ${updates[key as keyof WorkOrder]}`).join(', ')
+          };
+
+          // Trigger notification for assignment
+          if (updates.assignedTechId && updates.assignedTechId !== wo.assignedTechId) {
+            addNotification({
+              userId: updates.assignedTechId,
+              title: 'New Job Assignment',
+              message: `You have been assigned to Work Order ${wo.id} for ${wo.customerName}.`,
+              type: 'success',
+              link: `/work-orders/${wo.id}`
+            });
+          }
+
+          // Trigger notification for status change
+          if (updates.status && updates.status !== wo.status) {
+            addNotification({
+              userId: 'all',
+              title: 'Work Order Status Updated',
+              message: `Work Order ${wo.id} status changed to ${updates.status}.`,
+              type: 'info',
+              link: `/work-orders/${wo.id}`
+            });
+          }
+
+          return { ...wo, ...updates, history: [historyEntry, ...(wo.history || [])] };
         }
-
-        // Trigger notification for status change
-        if (updates.status && updates.status !== wo.status) {
-          addNotification({
-            userId: 'all',
-            title: 'Work Order Status Updated',
-            message: `Work Order ${wo.id} status changed to ${updates.status}.`,
-            type: 'info',
-            link: `/work-orders/${wo.id}`
-          });
-        }
-
-        return { ...wo, ...updates, history: [historyEntry, ...(wo.history || [])] };
-      }
-      return wo;
-    }));
+        return wo;
+      }));
+    } catch (error) {
+      console.error(`Failed to update work order ${id}:`, error);
+      addNotification({
+        userId: currentUser?.id || 'all',
+        title: 'Error Updating Work Order',
+        message: error instanceof Error ? error.message : 'Failed to save changes. Please check your connection and try again.',
+        type: 'error'
+      });
+      throw error;
+    }
   };
 
   const autoAssignTechnician = (workOrder: WorkOrder): string | undefined => {
@@ -780,8 +820,12 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const addInvoice = (invoice: Invoice) => setInvoices(prev => [invoice, ...prev]);
+  
+  const updateInvoice = (id: string, updates: Partial<Invoice>) => {
+    setInvoices(prev => prev.map(inv => inv.id === id ? { ...inv, ...updates } : inv));
+  };
 
-  const generateInvoice = (workOrderId: string) => {
+  const generateInvoice = async (workOrderId: string) => {
     const wo = workOrders.find(w => w.id === workOrderId);
     if (!wo) return;
 
@@ -797,11 +841,16 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       amount: `$${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
       laborCost: labor,
       partsCost: parts,
-      status: 'PENDING'
+      status: 'PENDING',
+      type: 'INVOICE'
     };
 
     addInvoice(newInvoice);
-    updateWorkOrder(wo.id, { status: WorkOrderStatus.INVOICED });
+    try {
+      await updateWorkOrder(wo.id, { status: WorkOrderStatus.INVOICED });
+    } catch (error) {
+      console.error("Failed to update work order status after generating invoice", error);
+    }
   };
   const addClient = (client: any) => setClients(prev => [client, ...prev]);
   const updateClient = (id: string | number, updates: Partial<any>) => {
@@ -1231,7 +1280,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
       emailTemplates, addEmailTemplate, updateEmailTemplate, deleteEmailTemplate,
       workOrders, selectedWorkOrderId, setSelectedWorkOrderId, addWorkOrder, updateWorkOrder, autoAssignTechnician,
       technicians, addTechnician, deleteTechnician, updateTechnician,
-      invoices, addInvoice, generateInvoice,
+      invoices, addInvoice, updateInvoice, generateInvoice,
       clients, addClient, updateClient, deleteClient,
       employees, addEmployee, updateEmployee, deleteEmployee,
       tasks, addTask, updateTask, deleteTask, moveTask,

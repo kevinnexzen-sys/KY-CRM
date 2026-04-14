@@ -6,63 +6,140 @@ import { Priority, Task, View } from '../types';
 
 // --- INVOICES VIEW ---
 export const Invoices: React.FC = () => {
-  const { invoices, addInvoice } = useData();
+  const { invoices, addInvoice, updateInvoice, workOrders, updateWorkOrder } = useData();
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [activeTab, setActiveTab] = useState<'INVOICE' | 'ESTIMATE'>('ESTIMATE');
+  const [isCreating, setIsCreating] = useState(false);
+  
+  // Creation State
+  const [newType, setNewType] = useState<'INVOICE' | 'ESTIMATE'>('ESTIMATE');
+  const [selectedWO, setSelectedWO] = useState('');
+  const [laborCost, setLaborCost] = useState(0);
+  const [partsCost, setPartsCost] = useState(0);
 
   const filteredInvoices = invoices.filter(inv => 
-    filterStatus === 'ALL' || inv.status === filterStatus
+    (inv.type || 'INVOICE') === activeTab &&
+    (filterStatus === 'ALL' || inv.status === filterStatus)
   );
 
   const handleCreate = () => {
-    // Simplified creation flow for demo
-    const amount = prompt("Enter invoice amount (e.g., $500):", "$500");
-    if (!amount) return;
-    addInvoice({
-        id: `INV-${1000 + invoices.length + 1}`,
-        workOrderId: 'MANUAL',
-        client: 'New Client',
-        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        amount,
-        laborCost: parseFloat(amount.replace('$', '')) || 0,
-        partsCost: 0,
-        status: 'PENDING'
-    });
+    setIsCreating(true);
+    setNewType(activeTab);
   };
+
+  const submitCreate = () => {
+    if (!selectedWO) return alert("Please select a Work Order");
+    const wo = workOrders.find(w => w.id === selectedWO);
+    if (!wo) return;
+
+    const newInv = {
+        id: `${newType === 'ESTIMATE' ? 'EST' : 'INV'}-${1000 + invoices.length + 1}`,
+        workOrderId: wo.id,
+        client: wo.customerName,
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        amount: `$${(laborCost + partsCost).toFixed(2)}`,
+        laborCost,
+        partsCost,
+        type: newType,
+        status: newType === 'ESTIMATE' ? 'DRAFT' : 'PENDING'
+    };
+    
+    addInvoice(newInv as any);
+    
+    // Update Work Order Status
+    if (newType === 'ESTIMATE') {
+      updateWorkOrder(wo.id, { status: 'Estimate Pending' as any, estimateId: newInv.id });
+    } else {
+      updateWorkOrder(wo.id, { status: 'Invoiced' as any, invoiceId: newInv.id });
+    }
+    
+    setIsCreating(false);
+    setSelectedWO('');
+    setLaborCost(0);
+    setPartsCost(0);
+  };
+
+  const handleStatusChange = (inv: any, newStatus: string) => {
+    updateInvoice(inv.id, { status: newStatus as any });
+    
+    // If estimate is approved, update the work order
+    if (inv.type === 'ESTIMATE' && newStatus === 'APPROVED') {
+      updateWorkOrder(inv.workOrderId, { status: 'Estimate Approved' as any });
+    } else if (inv.type === 'ESTIMATE' && newStatus === 'DECLINED') {
+      updateWorkOrder(inv.workOrderId, { status: 'Estimate Declined' as any });
+    }
+  };
+
+  const eligibleWorkOrders = workOrders.filter(wo => 
+    newType === 'ESTIMATE' 
+      ? (wo.status === 'Inspection Done' || wo.status === 'New')
+      : (wo.status === 'Completed' || wo.status === 'Estimate Approved')
+  );
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-slate-900">Invoices & Estimates</h2>
-          <p className="text-sm text-slate-500">Track billing and financial records</p>
+          <p className="text-sm text-slate-500">Manage billing and project estimates</p>
         </div>
         <button onClick={handleCreate} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2 text-sm font-medium shadow-sm">
-          <Plus className="w-4 h-4" /> Create Invoice
+          <Plus className="w-4 h-4" /> Create New
+        </button>
+      </div>
+
+      <div className="flex gap-4 border-b border-slate-200">
+        <button 
+          onClick={() => { setActiveTab('ESTIMATE'); setFilterStatus('ALL'); }}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'ESTIMATE' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Estimates
+        </button>
+        <button 
+          onClick={() => { setActiveTab('INVOICE'); setFilterStatus('ALL'); }}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'INVOICE' ? 'border-emerald-600 text-emerald-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          Invoices
         </button>
       </div>
 
       <div className="flex gap-2">
-        {['ALL', 'PENDING', 'PAID', 'OVERDUE'].map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              filterStatus === status 
-                ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200' 
-                : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
-            }`}
-          >
-            {status}
-          </button>
-        ))}
+        {activeTab === 'INVOICE' ? 
+          ['ALL', 'PENDING', 'PAID', 'OVERDUE'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                filterStatus === status 
+                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200' 
+                  : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {status}
+            </button>
+          )) :
+          ['ALL', 'DRAFT', 'SENT', 'APPROVED', 'DECLINED'].map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilterStatus(status)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                filterStatus === status 
+                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-200' 
+                  : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              {status}
+            </button>
+          ))
+        }
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <table className="w-full text-left text-sm">
           <thead className="bg-slate-50 text-slate-500 font-bold uppercase text-[10px] tracking-widest border-b border-slate-200">
             <tr>
-              <th className="px-6 py-4">Invoice #</th>
+              <th className="px-6 py-4">{activeTab === 'ESTIMATE' ? 'Estimate #' : 'Invoice #'}</th>
               <th className="px-6 py-4">Client</th>
               <th className="px-6 py-4">Date</th>
               <th className="px-6 py-4">Amount</th>
@@ -84,8 +161,8 @@ export const Invoices: React.FC = () => {
                 <td className="px-6 py-4 font-bold text-slate-900">{inv.amount}</td>
                 <td className="px-6 py-4">
                     <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${
-                      inv.status === 'PAID' ? 'bg-green-50 text-green-700 border-green-200' : 
-                      inv.status === 'OVERDUE' ? 'bg-red-50 text-red-700 border-red-200' :
+                      ['PAID', 'APPROVED'].includes(inv.status) ? 'bg-green-50 text-green-700 border-green-200' : 
+                      ['OVERDUE', 'DECLINED'].includes(inv.status) ? 'bg-red-50 text-red-700 border-red-200' :
                       'bg-yellow-50 text-yellow-700 border-yellow-200'
                     }`}>
                         {inv.status}
@@ -101,16 +178,88 @@ export const Invoices: React.FC = () => {
                 </td>
               </tr>
             ))}
+            {filteredInvoices.length === 0 && (
+              <tr>
+                <td colSpan={6} className="px-6 py-8 text-center text-slate-500">
+                  No {activeTab.toLowerCase()}s found.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* Invoice Detail Modal */}
+      {/* Creation Modal */}
+      {isCreating && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <h3 className="font-bold text-slate-900">Create New {newType === 'ESTIMATE' ? 'Estimate' : 'Invoice'}</h3>
+              <button onClick={() => setIsCreating(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
+                <X className="w-4 h-4 text-slate-500" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Type</label>
+                <select 
+                  value={newType} 
+                  onChange={(e) => setNewType(e.target.value as any)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none"
+                >
+                  <option value="ESTIMATE">Estimate</option>
+                  <option value="INVOICE">Invoice</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Select Work Order</label>
+                <select 
+                  value={selectedWO} 
+                  onChange={(e) => setSelectedWO(e.target.value)}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none"
+                >
+                  <option value="">-- Select Work Order --</option>
+                  {eligibleWorkOrders.map(wo => (
+                    <option key={wo.id} value={wo.id}>{wo.id} - {wo.customerName} ({wo.status})</option>
+                  ))}
+                </select>
+                {eligibleWorkOrders.length === 0 && (
+                  <p className="text-xs text-amber-600 mt-1">No eligible work orders found for {newType.toLowerCase()} creation.</p>
+                )}
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Labor Cost ($)</label>
+                <input 
+                  type="number" 
+                  value={laborCost} 
+                  onChange={(e) => setLaborCost(Number(e.target.value))}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Parts Cost ($)</label>
+                <input 
+                  type="number" 
+                  value={partsCost} 
+                  onChange={(e) => setPartsCost(Number(e.target.value))}
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none"
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-2">
+                <button onClick={() => setIsCreating(false)} className="px-4 py-2 text-slate-500 hover:bg-slate-50 rounded-lg text-sm font-bold">Cancel</button>
+                <button onClick={submitCreate} className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 text-sm font-bold">Create</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Detail Modal */}
       {selectedInvoice && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
           <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
             <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-              <h3 className="font-bold text-slate-900">Invoice Details - {selectedInvoice.id}</h3>
+              <h3 className="font-bold text-slate-900">{selectedInvoice.type === 'ESTIMATE' ? 'Estimate' : 'Invoice'} Details - {selectedInvoice.id}</h3>
               <button onClick={() => setSelectedInvoice(null)} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
                 <X className="w-4 h-4 text-slate-500" />
               </button>
@@ -124,7 +273,9 @@ export const Invoices: React.FC = () => {
                 <div className="text-right">
                   <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Status</p>
                   <span className={`px-2 py-1 rounded-full text-[10px] font-bold border ${
-                    selectedInvoice.status === 'PAID' ? 'bg-green-50 text-green-700 border-green-200' : 'bg-yellow-50 text-yellow-700 border-yellow-200'
+                    ['PAID', 'APPROVED'].includes(selectedInvoice.status) ? 'bg-green-50 text-green-700 border-green-200' : 
+                    ['OVERDUE', 'DECLINED'].includes(selectedInvoice.status) ? 'bg-red-50 text-red-700 border-red-200' :
+                    'bg-yellow-50 text-yellow-700 border-yellow-200'
                   }`}>
                     {selectedInvoice.status}
                   </span>
@@ -147,11 +298,28 @@ export const Invoices: React.FC = () => {
               </div>
 
               <div className="flex gap-3">
-                <button className="flex-1 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
-                  <Download className="w-4 h-4" /> Download PDF
-                </button>
-                <button className="flex-1 py-2.5 border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2">
-                  <Mail className="w-4 h-4" /> Email Client
+                {selectedInvoice.type === 'ESTIMATE' && selectedInvoice.status === 'DRAFT' && (
+                  <button onClick={() => handleStatusChange(selectedInvoice, 'SENT')} className="flex-1 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                    <Mail className="w-4 h-4" /> Send to Client
+                  </button>
+                )}
+                {selectedInvoice.type === 'ESTIMATE' && selectedInvoice.status === 'SENT' && (
+                  <>
+                    <button onClick={() => handleStatusChange(selectedInvoice, 'APPROVED')} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors">
+                      Approve
+                    </button>
+                    <button onClick={() => handleStatusChange(selectedInvoice, 'DECLINED')} className="flex-1 py-2.5 bg-red-600 text-white rounded-xl text-sm font-bold hover:bg-red-700 transition-colors">
+                      Decline
+                    </button>
+                  </>
+                )}
+                {selectedInvoice.type === 'INVOICE' && selectedInvoice.status === 'PENDING' && (
+                  <button onClick={() => handleStatusChange(selectedInvoice, 'PAID')} className="flex-1 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-bold hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2">
+                    <DollarSign className="w-4 h-4" /> Mark as Paid
+                  </button>
+                )}
+                <button className="p-2.5 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors">
+                  <Download className="w-5 h-5" />
                 </button>
               </div>
             </div>

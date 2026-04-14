@@ -6,12 +6,12 @@ import { generateAIResponse } from '../services/geminiService';
 import { motion, AnimatePresence } from 'motion/react';
 
 export const AIChatWidget: React.FC = () => {
-  const { currentUser, isMasterAdmin } = useData();
+  const { currentUser } = useData();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant', content: string, timestamp: Date }[]>([
-    { role: 'assistant', content: 'Hello Master Admin! How can I assist you with DealPipeline operations today?', timestamp: new Date() }
+    { role: 'assistant', content: 'Hello! How can I assist you with DealPipeline operations today?', timestamp: new Date() }
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -26,7 +26,7 @@ export const AIChatWidget: React.FC = () => {
     }
   }, [messages, isOpen, isMinimized]);
 
-  if (!currentUser || !isMasterAdmin()) return null;
+  if (!currentUser) return null;
 
   const handleSend = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -38,7 +38,7 @@ export const AIChatWidget: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await generateAIResponse(userMessage, `User is Master Admin: ${currentUser.name}. Current system time: ${new Date().toLocaleString()}`);
+      const response = await generateAIResponse(userMessage, `User is ${currentUser.role}: ${currentUser.name}. Current system time: ${new Date().toLocaleString()}`);
       setMessages(prev => [...prev, { role: 'assistant', content: response, timestamp: new Date() }]);
     } catch (error) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'Sorry, I encountered an error. Please try again.', timestamp: new Date() }]);
@@ -73,7 +73,7 @@ export const AIChatWidget: React.FC = () => {
                   <h3 className="text-sm font-bold text-white">AI Assistant</h3>
                   <div className="flex items-center gap-1">
                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
-                    <span className="text-[10px] text-slate-400 font-medium">Master Admin Access</span>
+                    <span className="text-[10px] text-slate-400 font-medium">{currentUser.role} Access</span>
                   </div>
                 </div>
               </div>

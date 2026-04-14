@@ -2,6 +2,7 @@
 export enum View {
   DASHBOARD = 'DASHBOARD',
   WORK_ORDERS = 'WORK_ORDERS',
+  APPROVED_WORK_ORDERS = 'APPROVED_WORK_ORDERS',
   INVOICES = 'INVOICES',
   CORPORATIONS = 'CORPORATIONS',
   CLIENTS = 'CLIENTS',
@@ -36,6 +37,10 @@ export enum WorkOrderStatus {
   NEW = 'New',
   SCHEDULED = 'Scheduled',
   IN_PROGRESS = 'In Progress',
+  INSPECTION_DONE = 'Inspection Done',
+  ESTIMATE_PENDING = 'Estimate Pending',
+  ESTIMATE_APPROVED = 'Estimate Approved',
+  ESTIMATE_DECLINED = 'Estimate Declined',
   COMPLETED = 'Completed',
   CANCELLED = 'Cancelled',
   INVOICED = 'Invoiced'
@@ -117,6 +122,9 @@ export interface WorkOrder {
   reminderSet?: boolean;
   isConfirmed?: boolean;
   isApproved?: boolean;
+  materials?: { id: string; name: string; status: 'PENDING' | 'ORDERED' | 'RECEIVED'; cost: number }[];
+  estimateId?: string;
+  invoiceId?: string;
 }
 
 export interface Invoice {
@@ -127,7 +135,9 @@ export interface Invoice {
   amount: string;
   laborCost: number;
   partsCost: number;
-  status: 'PAID' | 'PENDING' | 'OVERDUE';
+  type: 'INVOICE' | 'ESTIMATE';
+  status: 'PAID' | 'PENDING' | 'OVERDUE' | 'DRAFT' | 'SENT' | 'APPROVED' | 'DECLINED';
+  items?: { description: string; quantity: number; price: number }[];
 }
 
 export interface Technician {
@@ -262,6 +272,9 @@ export interface Employee {
     cvResume?: string;
     sscCertificate?: string;
     hscCertificate?: string;
+    familyMembersPhotos?: string;
+    emergencyContactIdPhotos?: string;
+    certificatePhotos?: string;
   };
   
   // Access

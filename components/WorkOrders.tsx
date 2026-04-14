@@ -26,6 +26,7 @@ export const WorkOrders: React.FC = () => {
     }
   }, [selectedWorkOrderId, workOrders]);
   const [isGeneratingEstimate, setIsGeneratingEstimate] = useState(false);
+  const [aiEstimateResult, setAiEstimateResult] = useState<any>(null);
   const [filterTab, setFilterTab] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [corporationFilter, setCorporationFilter] = useState('All Corporations');
@@ -51,7 +52,9 @@ export const WorkOrders: React.FC = () => {
     corporation: 'Nexzen'
   });
 
-  const handleCreateOrder = (e: React.FormEvent) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Email validation
@@ -71,26 +74,38 @@ export const WorkOrders: React.FC = () => {
       subtasks: [],
       history: []
     };
-    addWorkOrder(order);
-    setIsCreateModalOpen(false);
-    // Reset form
-    setNewOrder({
-      customerName: '',
-      email: '',
-      phone: '',
-      address: '',
-      serviceType: 'HVAC',
-      priority: Priority.MEDIUM,
-      description: '',
-      notes: '',
-      corporation: 'Nexzen'
-    });
+    
+    setIsSubmitting(true);
+    try {
+      await addWorkOrder(order);
+      setIsCreateModalOpen(false);
+      // Reset form
+      setNewOrder({
+        customerName: '',
+        email: '',
+        phone: '',
+        address: '',
+        serviceType: 'HVAC',
+        priority: Priority.MEDIUM,
+        description: '',
+        notes: '',
+        corporation: 'Nexzen'
+      });
+    } catch (error) {
+      console.error("Failed to create work order", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleStatusChange = (newStatus: string) => {
+  const handleStatusChange = async (newStatus: string) => {
      if(selectedOrder) {
-         updateWorkOrder(selectedOrder.id, { status: newStatus as WorkOrderStatus });
-         setSelectedOrder({ ...selectedOrder, status: newStatus });
+         try {
+           await updateWorkOrder(selectedOrder.id, { status: newStatus as WorkOrderStatus });
+           setSelectedOrder({ ...selectedOrder, status: newStatus });
+         } catch (error) {
+           console.error("Failed to update status", error);
+         }
      }
   };
 
@@ -120,7 +135,7 @@ export const WorkOrders: React.FC = () => {
     });
   };
 
-  const handleAddSubtask = () => {
+  const handleAddSubtask = async () => {
     if (!newSubtask.trim() || !selectedOrder) return;
     const subtask: Subtask = {
       id: `S${Date.now()}`,
@@ -137,19 +152,23 @@ export const WorkOrders: React.FC = () => {
       timestamp: new Date().toISOString()
     };
 
-    updateWorkOrder(selectedOrder.id, { 
-      subtasks: updatedSubtasks,
-      history: [historyEntry, ...(selectedOrder.history || [])]
-    });
-    setSelectedOrder({ 
-      ...selectedOrder, 
-      subtasks: updatedSubtasks,
-      history: [historyEntry, ...(selectedOrder.history || [])]
-    });
-    setNewSubtask('');
+    try {
+      await updateWorkOrder(selectedOrder.id, { 
+        subtasks: updatedSubtasks,
+        history: [historyEntry, ...(selectedOrder.history || [])]
+      });
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        subtasks: updatedSubtasks,
+        history: [historyEntry, ...(selectedOrder.history || [])]
+      });
+      setNewSubtask('');
+    } catch (error) {
+      console.error("Failed to add subtask", error);
+    }
   };
 
-  const toggleSubtask = (subtaskId: string) => {
+  const toggleSubtask = async (subtaskId: string) => {
     if (!selectedOrder) return;
     const subtask = selectedOrder.subtasks.find(s => s.id === subtaskId);
     if (!subtask) return;
@@ -167,18 +186,22 @@ export const WorkOrders: React.FC = () => {
       timestamp: new Date().toISOString()
     };
 
-    updateWorkOrder(selectedOrder.id, { 
-      subtasks: updatedSubtasks,
-      history: [historyEntry, ...(selectedOrder.history || [])]
-    });
-    setSelectedOrder({ 
-      ...selectedOrder, 
-      subtasks: updatedSubtasks,
-      history: [historyEntry, ...(selectedOrder.history || [])]
-    });
+    try {
+      await updateWorkOrder(selectedOrder.id, { 
+        subtasks: updatedSubtasks,
+        history: [historyEntry, ...(selectedOrder.history || [])]
+      });
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        subtasks: updatedSubtasks,
+        history: [historyEntry, ...(selectedOrder.history || [])]
+      });
+    } catch (error) {
+      console.error("Failed to toggle subtask", error);
+    }
   };
 
-  const deleteSubtask = (subtaskId: string) => {
+  const deleteSubtask = async (subtaskId: string) => {
     if (!selectedOrder) return;
     const subtask = selectedOrder.subtasks.find(s => s.id === subtaskId);
     if (!subtask) return;
@@ -193,18 +216,22 @@ export const WorkOrders: React.FC = () => {
       timestamp: new Date().toISOString()
     };
 
-    updateWorkOrder(selectedOrder.id, { 
-      subtasks: updatedSubtasks,
-      history: [historyEntry, ...(selectedOrder.history || [])]
-    });
-    setSelectedOrder({ 
-      ...selectedOrder, 
-      subtasks: updatedSubtasks,
-      history: [historyEntry, ...(selectedOrder.history || [])]
-    });
+    try {
+      await updateWorkOrder(selectedOrder.id, { 
+        subtasks: updatedSubtasks,
+        history: [historyEntry, ...(selectedOrder.history || [])]
+      });
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        subtasks: updatedSubtasks,
+        history: [historyEntry, ...(selectedOrder.history || [])]
+      });
+    } catch (error) {
+      console.error("Failed to delete subtask", error);
+    }
   };
 
-  const handleUpdateSubtask = (subtaskId: string) => {
+  const handleUpdateSubtask = async (subtaskId: string) => {
     if (!selectedOrder || !editingSubtaskTitle.trim()) {
       setEditingSubtaskId(null);
       return;
@@ -229,16 +256,20 @@ export const WorkOrders: React.FC = () => {
       timestamp: new Date().toISOString()
     };
 
-    updateWorkOrder(selectedOrder.id, { 
-      subtasks: updatedSubtasks,
-      history: [historyEntry, ...(selectedOrder.history || [])]
-    });
-    setSelectedOrder({ 
-      ...selectedOrder, 
-      subtasks: updatedSubtasks,
-      history: [historyEntry, ...(selectedOrder.history || [])]
-    });
-    setEditingSubtaskId(null);
+    try {
+      await updateWorkOrder(selectedOrder.id, { 
+        subtasks: updatedSubtasks,
+        history: [historyEntry, ...(selectedOrder.history || [])]
+      });
+      setSelectedOrder({ 
+        ...selectedOrder, 
+        subtasks: updatedSubtasks,
+        history: [historyEntry, ...(selectedOrder.history || [])]
+      });
+      setEditingSubtaskId(null);
+    } catch (error) {
+      console.error("Failed to update subtask", error);
+    }
   };
 
   const filteredOrders = workOrders.filter(order => {
@@ -280,23 +311,27 @@ export const WorkOrders: React.FC = () => {
 
   const { technicians, autoAssignTechnician } = useData();
 
-  const handleAutoAssign = () => {
+  const handleAutoAssign = async () => {
     if (!selectedOrder) return;
     const techId = autoAssignTechnician(selectedOrder);
     if (techId) {
       const tech = technicians.find(t => t.id === techId);
-      updateWorkOrder(selectedOrder.id, { 
-        assignedTechId: techId, 
-        assignedTechName: tech?.name,
-        status: WorkOrderStatus.SCHEDULED 
-      });
-      setSelectedOrder({ 
-        ...selectedOrder, 
-        assignedTechId: techId, 
-        techName: tech?.name,
-        status: WorkOrderStatus.SCHEDULED 
-      });
-      alert(`AI Suggestion: Assigned ${tech?.name} to this job.`);
+      try {
+        await updateWorkOrder(selectedOrder.id, { 
+          assignedTechId: techId, 
+          assignedTechName: tech?.name,
+          status: WorkOrderStatus.SCHEDULED 
+        });
+        setSelectedOrder({ 
+          ...selectedOrder, 
+          assignedTechId: techId, 
+          techName: tech?.name,
+          status: WorkOrderStatus.SCHEDULED 
+        });
+        alert(`AI Suggestion: Assigned ${tech?.name} to this job.`);
+      } catch (error) {
+        console.error("Failed to auto-assign technician", error);
+      }
     } else {
       alert("No available technicians found for this service type.");
     }
@@ -311,34 +346,47 @@ export const WorkOrders: React.FC = () => {
     setIsGeneratingEstimate(true);
     try {
       const estimate = await generateEstimateAI(selectedOrder.reportText);
-      
-      // Calculate costs from line items
-      const laborCost = estimate.lineItems
-        .filter((item: any) => item.type === 'Labor')
-        .reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
-      
-      const partsCost = estimate.lineItems
-        .filter((item: any) => item.type === 'Part')
-        .reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
+      setAiEstimateResult(estimate);
+    } catch (error) {
+      console.error("Failed to generate AI estimate:", error);
+      alert("Failed to generate AI estimate. Please try again.");
+    } finally {
+      setIsGeneratingEstimate(false);
+    }
+  };
 
-      const historyEntry = {
-        id: `H${Date.now()}`,
-        userId: currentUser?.id || 'system',
-        userName: currentUser?.name || 'System',
-        action: `AI Generated Estimate: ${estimate.summary}`,
-        details: `Total: $${estimate.totalAmount}. Recommendations: ${estimate.recommendations}`,
-        timestamp: new Date().toISOString()
-      };
+  const applyAIEstimate = async () => {
+    if (!selectedOrder || !aiEstimateResult) return;
 
-      const updatedOrder = {
-        ...selectedOrder,
-        laborCost,
-        partsCost,
-        notes: `${selectedOrder.notes}\n\n--- AI ESTIMATE SUMMARY ---\n${estimate.summary}\n\nRecommendations: ${estimate.recommendations}`,
-        history: [historyEntry, ...(selectedOrder.history || [])]
-      };
+    const estimate = aiEstimateResult;
+    // Calculate costs from line items
+    const laborCost = estimate.lineItems
+      .filter((item: any) => item.type === 'Labor')
+      .reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
+    
+    const partsCost = estimate.lineItems
+      .filter((item: any) => item.type === 'Part')
+      .reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
 
-      updateWorkOrder(selectedOrder.id, {
+    const historyEntry = {
+      id: `H${Date.now()}`,
+      userId: currentUser?.id || 'system',
+      userName: currentUser?.name || 'System',
+      action: `AI Generated Estimate Applied: ${estimate.summary}`,
+      details: `Total: $${estimate.totalAmount}. Recommendations: ${estimate.recommendations}`,
+      timestamp: new Date().toISOString()
+    };
+
+    const updatedOrder = {
+      ...selectedOrder,
+      laborCost,
+      partsCost,
+      notes: `${selectedOrder.notes}\n\n--- AI ESTIMATE SUMMARY ---\n${estimate.summary}\n\nRecommendations: ${estimate.recommendations}`,
+      history: [historyEntry, ...(selectedOrder.history || [])]
+    };
+
+    try {
+      await updateWorkOrder(selectedOrder.id, {
         laborCost,
         partsCost,
         notes: updatedOrder.notes,
@@ -346,12 +394,10 @@ export const WorkOrders: React.FC = () => {
       });
       
       setSelectedOrder(updatedOrder);
-      alert("AI Estimate generated successfully!");
+      setAiEstimateResult(null);
+      alert("AI Estimate applied successfully!");
     } catch (error) {
-      console.error("Failed to generate AI estimate:", error);
-      alert("Failed to generate AI estimate. Please try again.");
-    } finally {
-      setIsGeneratingEstimate(false);
+      console.error("Failed to apply AI estimate", error);
     }
   };
 
@@ -531,10 +577,10 @@ export const WorkOrders: React.FC = () => {
                                 {isGeneratingEstimate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                                 AI Generate Estimate
                             </button>
-                            {selectedOrder.status === WorkOrderStatus.COMPLETED && (
+                            {(selectedOrder.status === WorkOrderStatus.COMPLETED || selectedOrder.status === WorkOrderStatus.ESTIMATE_APPROVED || selectedOrder.status === WorkOrderStatus.IN_PROGRESS) && (
                             <button 
-                                onClick={() => {
-                                    generateInvoice(selectedOrder.id);
+                                onClick={async () => {
+                                    await generateInvoice(selectedOrder.id);
                                     setSelectedOrder({ ...selectedOrder, status: WorkOrderStatus.INVOICED });
                                 }}
                                 className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold hover:bg-emerald-700 transition-colors shadow-sm"
@@ -706,6 +752,14 @@ export const WorkOrders: React.FC = () => {
                      <div className="flex justify-between items-center mb-6">
                         <h3 className="font-bold text-slate-900 text-sm">Inspection Report & Photos</h3>
                         <div className="flex gap-2">
+                             <button 
+                                onClick={handleGenerateAIEstimate}
+                                disabled={isGeneratingEstimate}
+                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold hover:bg-emerald-100 transition-colors disabled:opacity-50"
+                             >
+                                {isGeneratingEstimate ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+                                AI Generate Estimate
+                             </button>
                              <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 rounded-lg text-xs font-bold hover:bg-slate-50">
                                 <FileText className="w-3 h-3" /> Add Report
                              </button>
@@ -769,10 +823,20 @@ export const WorkOrders: React.FC = () => {
                             {isGeneratingEstimate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                             AI Generate Estimate
                         </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700">
+                        <button 
+                            onClick={handleGenerateAIEstimate}
+                            disabled={isGeneratingEstimate}
+                            className="w-full flex items-center gap-3 px-4 py-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700 disabled:opacity-50"
+                        >
                             <DollarSign className="w-4 h-4 text-slate-400" /> Create Estimate
                         </button>
-                        <button className="w-full flex items-center gap-3 px-4 py-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700">
+                        <button 
+                            onClick={async () => {
+                                await generateInvoice(selectedOrder.id);
+                                setSelectedOrder({ ...selectedOrder, status: WorkOrderStatus.INVOICED });
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700"
+                        >
                             <FilePlus className="w-4 h-4 text-slate-400" /> Create Invoice
                         </button>
                         <button className="w-full flex items-center gap-3 px-4 py-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors text-sm font-medium text-slate-700">
@@ -1193,10 +1257,120 @@ export const WorkOrders: React.FC = () => {
                 </div>
               </div>
               <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-                <button type="button" onClick={() => setIsCreateModalOpen(false)} className="px-4 py-2 text-slate-700 hover:bg-slate-200 rounded-lg font-medium">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium shadow-sm">Create Order</button>
+                <button 
+                  type="button" 
+                  onClick={() => setIsCreateModalOpen(false)} 
+                  className="px-4 py-2 text-slate-700 hover:bg-slate-200 rounded-lg font-medium"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="px-4 py-2 bg-emerald-600 text-white hover:bg-emerald-700 rounded-lg font-medium shadow-sm flex items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Order'
+                  )}
+                </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* AI Estimate Modal */}
+      {aiEstimateResult && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-emerald-50/50">
+              <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-emerald-600" />
+                AI Generated Estimate
+              </h2>
+              <button 
+                onClick={() => setAiEstimateResult(null)}
+                className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="mb-6">
+                <h3 className="text-sm font-bold text-slate-900 mb-2">Summary</h3>
+                <p className="text-sm text-slate-700 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                  {aiEstimateResult.summary}
+                </p>
+              </div>
+
+              <div className="mb-6">
+                <h3 className="text-sm font-bold text-slate-900 mb-3">Line Items</h3>
+                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-slate-50 border-b border-slate-200">
+                      <tr>
+                        <th className="px-4 py-3 font-medium text-slate-600">Description</th>
+                        <th className="px-4 py-3 font-medium text-slate-600">Type</th>
+                        <th className="px-4 py-3 font-medium text-slate-600 text-right">Qty</th>
+                        <th className="px-4 py-3 font-medium text-slate-600 text-right">Unit Price</th>
+                        <th className="px-4 py-3 font-medium text-slate-600 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {aiEstimateResult.lineItems?.map((item: any, idx: number) => (
+                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="px-4 py-3 text-slate-900">{item.description}</td>
+                          <td className="px-4 py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${item.type === 'Labor' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
+                              {item.type}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-right text-slate-700">{item.quantity}</td>
+                          <td className="px-4 py-3 text-right text-slate-700">${item.unitPrice?.toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-medium text-slate-900">${(item.quantity * item.unitPrice)?.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-slate-50 border-t border-slate-200 font-bold">
+                      <tr>
+                        <td colSpan={4} className="px-4 py-3 text-right text-slate-900">Total Amount:</td>
+                        <td className="px-4 py-3 text-right text-emerald-600">${aiEstimateResult.totalAmount?.toFixed(2)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+
+              {aiEstimateResult.recommendations && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 mb-2">Recommendations</h3>
+                  <p className="text-sm text-slate-700 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                    {aiEstimateResult.recommendations}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50">
+              <button 
+                onClick={() => setAiEstimateResult(null)}
+                className="px-6 py-2.5 border border-slate-300 text-slate-700 rounded-xl font-bold hover:bg-slate-100 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={applyAIEstimate}
+                className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-sm shadow-emerald-200"
+              >
+                Apply Estimate
+              </button>
+            </div>
           </div>
         </div>
       )}

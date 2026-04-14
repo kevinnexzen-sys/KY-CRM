@@ -27,7 +27,8 @@ import {
   Mail, 
   GraduationCap,
   Zap,
-  Box
+  Box,
+  CheckCircle2
 } from 'lucide-react';
 import { useData } from '../contexts/DataContext';
 
@@ -38,7 +39,7 @@ export const Sidebar: React.FC = () => {
     'Master Admin': Object.values(View),
     'Admin': Object.values(View).filter(v => v !== View.LIVE_MONITORING),
     'Manager': [
-      View.DASHBOARD, View.WORK_ORDERS, View.TECHNICIANS, View.MAP, 
+      View.DASHBOARD, View.WORK_ORDERS, View.APPROVED_WORK_ORDERS, View.TECHNICIANS, View.MAP, 
       View.CLIENTS, View.CORPORATIONS, View.INVOICES, View.TASKS, 
       View.CHAT, View.EMAIL, View.SCHEDULER, View.DISPATCH, View.REPORTS,
       View.INVENTORY
@@ -47,7 +48,7 @@ export const Sidebar: React.FC = () => {
       View.DASHBOARD, View.WORK_ORDERS, View.TASKS, View.CHAT, View.TRAINING, View.MAP
     ],
     'Dispatcher': [
-      View.DASHBOARD, View.WORK_ORDERS, View.TECHNICIANS, View.MAP, 
+      View.DASHBOARD, View.WORK_ORDERS, View.APPROVED_WORK_ORDERS, View.TECHNICIANS, View.MAP, 
       View.CHAT, View.SCHEDULER, View.DISPATCH
     ]
   };
@@ -60,6 +61,7 @@ export const Sidebar: React.FC = () => {
       items: [
         { id: View.DASHBOARD, label: 'Dashboard', icon: LayoutDashboard },
         { id: View.WORK_ORDERS, label: 'Work Orders', icon: ClipboardList },
+        { id: View.APPROVED_WORK_ORDERS, label: 'Approved Work Orders', icon: CheckCircle2 },
         { id: View.INVOICES, label: 'Invoices & Estimates', icon: FileText },
         { id: View.CORPORATIONS, label: 'Corporations', icon: Building2 },
         { id: View.CLIENTS, label: 'Clients', icon: Users },
@@ -72,7 +74,6 @@ export const Sidebar: React.FC = () => {
         { id: View.DISPATCH, label: 'Technician Dispatch', icon: Zap },
         { id: View.TECHNICIANS, label: 'Technicians', icon: Wrench },
         { id: View.MAP, label: 'Map', icon: MapIcon },
-        { id: View.EMPLOYEES, label: 'Employees', icon: Briefcase },
         { id: View.TASKS, label: 'Tasks', icon: CheckSquare },
         { id: View.INVENTORY, label: 'Inventory', icon: Box },
       ].filter(item => allowedViews.includes(item.id))
@@ -90,6 +91,7 @@ export const Sidebar: React.FC = () => {
       title: 'TOOLS',
       items: [
         { id: View.PDF_EDITOR, label: 'PDF Editor Pro', icon: FileEdit },
+        { id: View.EMPLOYEES, label: 'Employees', icon: Briefcase },
         { id: View.OFFICE_EXPENSE, label: 'Office Expense', icon: DollarSign },
         { id: View.BROWSER, label: 'Internet Browser', icon: Globe },
         { id: View.TRAINING, label: 'Training Session', icon: GraduationCap },

@@ -14,6 +14,7 @@ import { OpenPhone } from './components/OpenPhone';
 import { Training } from './components/Training';
 import { AppBuilder } from './components/AppBuilder';
 import { Invoices, Corporations, Clients, Tasks, OfficeExpense } from './components/CRMModules';
+import { ApprovedWorkOrders } from './components/ApprovedWorkOrders';
 import { Employees } from './components/Employees';
 import { PDFEditor, Reports, Settings, Reminders, QuickPhone } from './components/ToolsModules';
 import { AutomationHub } from './components/AutomationHub';
@@ -52,7 +53,7 @@ function App() {
       'Master Admin': Object.values(View),
       'Admin': Object.values(View).filter(v => ![View.LIVE_MONITORING].includes(v)),
       'Manager': [
-        View.DASHBOARD, View.WORK_ORDERS, View.TECHNICIANS, View.MAP, 
+        View.DASHBOARD, View.WORK_ORDERS, View.APPROVED_WORK_ORDERS, View.TECHNICIANS, View.MAP, 
         View.CLIENTS, View.CORPORATIONS, View.INVOICES, View.TASKS, 
         View.CHAT, View.EMAIL, View.SCHEDULER, View.DISPATCH, View.REPORTS,
         View.INVENTORY
@@ -61,7 +62,7 @@ function App() {
         View.DASHBOARD, View.WORK_ORDERS, View.TASKS, View.CHAT, View.TRAINING, View.MAP
       ],
       'Dispatcher': [
-        View.DASHBOARD, View.WORK_ORDERS, View.TECHNICIANS, View.MAP, 
+        View.DASHBOARD, View.WORK_ORDERS, View.APPROVED_WORK_ORDERS, View.TECHNICIANS, View.MAP, 
         View.CHAT, View.SCHEDULER, View.DISPATCH
       ]
     };
@@ -75,6 +76,7 @@ function App() {
     switch (currentView) {
       case View.DASHBOARD: return <Dashboard />;
       case View.WORK_ORDERS: return <WorkOrders />;
+      case View.APPROVED_WORK_ORDERS: return <ApprovedWorkOrders />;
       case View.TECHNICIANS: return <Technicians initialViewMode='list' />;
       case View.MAP: return <Technicians initialViewMode='map' />;
       case View.CHAT: return <Chat />;
@@ -215,9 +217,9 @@ function App() {
         <div className="flex-1 overflow-auto p-6 relative custom-scrollbar">
           {renderContent()}
         </div>
+        
+        <AIChatWidget />
       </main>
-
-      <AIChatWidget />
     </div>
   );
 }

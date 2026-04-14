@@ -11,7 +11,7 @@ import { useData } from '../contexts/DataContext';
 import { WorkOrder, WorkOrderStatus, Priority, View } from '../types';
 
 export const Dashboard: React.FC = () => {
-  const { workOrders, navigateTo, setSelectedWorkOrderId } = useData();
+  const { workOrders, navigateTo, setSelectedWorkOrderId, updateWorkOrder, generateInvoice } = useData();
   const [activeTab, setActiveTab] = useState('All');
 
   // Dynamic KPI Calculations
@@ -29,7 +29,7 @@ export const Dashboard: React.FC = () => {
   const scheduledToday = workOrders.filter(wo => {
       const woDate = new Date(wo.date);
       const today = new Date();
-      return wo.status === WorkOrderStatus.SCHEDULED && 
+      return (wo.status === WorkOrderStatus.SCHEDULED || wo.status === WorkOrderStatus.ESTIMATE_APPROVED || wo.status === WorkOrderStatus.IN_PROGRESS) && 
              woDate.getDate() === today.getDate() &&
              woDate.getMonth() === today.getMonth();
   }).length;
@@ -46,6 +46,7 @@ export const Dashboard: React.FC = () => {
       case WorkOrderStatus.IN_PROGRESS: return 'bg-yellow-100 text-yellow-600 border-yellow-100';
       case WorkOrderStatus.COMPLETED: return 'bg-emerald-100 text-emerald-600 border-emerald-100';
       case WorkOrderStatus.CANCELLED: return 'bg-red-100 text-red-600 border-red-100';
+      case WorkOrderStatus.ESTIMATE_APPROVED: return 'bg-emerald-50 text-emerald-700 border-emerald-200';
       default: return 'bg-slate-100 text-slate-600 border-slate-100';
     }
   };
@@ -76,7 +77,7 @@ export const Dashboard: React.FC = () => {
     tomorrow.setDate(today.getDate() + 1);
 
     if (activeTab === 'Today Scheduled') {
-      return wo.status === WorkOrderStatus.SCHEDULED && 
+      return (wo.status === WorkOrderStatus.SCHEDULED || wo.status === WorkOrderStatus.ESTIMATE_APPROVED || wo.status === WorkOrderStatus.IN_PROGRESS) && 
              woDate.getDate() === today.getDate() &&
              woDate.getMonth() === today.getMonth();
     }
@@ -94,6 +95,33 @@ export const Dashboard: React.FC = () => {
     }
     return true;
   });
+
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+
+  const handleStatusChange = async (e: React.MouseEvent, orderId: string, newStatus: WorkOrderStatus) => {
+    e.stopPropagation();
+    try {
+      // We need to get updateWorkOrder from useData
+      // Let's assume it's available, we'll add it to the destructuring
+      await updateWorkOrder(orderId, { status: newStatus });
+      setActiveDropdown(null);
+    } catch (error) {
+      console.error("Failed to update status", error);
+    }
+  };
+
+  const handleGenerateInvoice = async (e: React.MouseEvent, orderId: string) => {
+    e.stopPropagation();
+    await generateInvoice(orderId);
+    setActiveDropdown(null);
+  };
+
+  const handleGenerateEstimate = (e: React.MouseEvent, order: WorkOrder) => {
+    e.stopPropagation();
+    setSelectedWorkOrderId(order.id);
+    navigateTo(View.WORK_ORDERS);
+    // The actual estimate generation happens in the WorkOrders view
+  };
 
   // --- DASHBOARD VIEW ---
   return (
@@ -425,8 +453,45 @@ export const Dashboard: React.FC = () => {
                                     {order.priority}
                                 </span>
                             </td>
-                            <td className="px-6 py-5 text-right">
-                                <MoreHorizontal className="w-5 h-5 text-slate-300 group-hover:text-slate-500 transition-colors ml-auto" />
+                            <td className="px-6 py-5 text-right relative">
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveDropdown(activeDropdown === order.id ? null : order.id);
+                                  }}
+                                  className="p-1 hover:bg-slate-100 rounded-lg transition-colors"
+                                >
+                                  <MoreHorizontal className="w-5 h-5 text-slate-400 hover:text-slate-600 transition-colors" />
+                                </button>
+                                
+                                {activeDropdown === order.id && (
+                                  <div className="absolute right-10 top-1/2 -translate-y-1/2 w-48 bg-white rounded-xl shadow-lg border border-slate-100 z-50 overflow-hidden py-1">
+                                    <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-slate-50">Actions</div>
+                                    <button 
+                                      onClick={(e) => handleGenerateEstimate(e, order)}
+                                      className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-emerald-600 transition-colors flex items-center gap-2"
+                                    >
+                                      <Sparkles className="w-4 h-4" /> Create Estimate
+                                    </button>
+                                    <button 
+                                      onClick={(e) => handleGenerateInvoice(e, order.id)}
+                                      className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-blue-600 transition-colors flex items-center gap-2"
+                                    >
+                                      <FileText className="w-4 h-4" /> Generate Invoice
+                                    </button>
+                                    <div className="border-t border-slate-50 my-1"></div>
+                                    <div className="px-3 py-2 text-xs font-bold text-slate-400 uppercase tracking-wider">Update Status</div>
+                                    {Object.values(WorkOrderStatus).map(status => (
+                                      <button
+                                        key={status}
+                                        onClick={(e) => handleStatusChange(e, order.id, status)}
+                                        className={`w-full text-left px-4 py-1.5 text-sm transition-colors ${order.status === status ? 'bg-slate-50 text-slate-900 font-medium' : 'text-slate-600 hover:bg-slate-50'}`}
+                                      >
+                                        {status}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
                             </td>
                         </tr>
                     ))}

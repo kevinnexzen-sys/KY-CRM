@@ -31,7 +31,7 @@ export const MOCK_WORK_ORDERS: WorkOrder[] = [
     customerName: 'Bob Smith', 
     serviceType: 'Plumbing Leak', 
     address: '456 Oak Dr, Austin, TX', 
-    status: WorkOrderStatus.SCHEDULED, 
+    status: WorkOrderStatus.ESTIMATE_APPROVED, 
     priority: Priority.MEDIUM, 
     date: '2026-03-06', 
     createdAt: '2026-02-26T11:30:00Z',
@@ -39,6 +39,11 @@ export const MOCK_WORK_ORDERS: WorkOrder[] = [
     assignedTechName: 'Mike Ross',
     probability: 90,
     subtasks: [],
+    materials: [
+      { id: 'M1', name: 'PVC Pipe 2"', status: 'ORDERED', cost: 45.50 },
+      { id: 'M2', name: 'Pipe Sealant', status: 'RECEIVED', cost: 12.99 },
+      { id: 'M3', name: 'Replacement Valve', status: 'PENDING', cost: 85.00 }
+    ],
     history: [
       { id: 'H2', userId: 'ADMIN_001', userName: 'Kevin Ryan', action: 'Created Work Order', timestamp: '2024-05-16T11:30:00Z' },
       { id: 'H3', userId: 'ADMIN_001', userName: 'Kevin Ryan', action: 'Assigned to Mike Ross', timestamp: '2024-05-16T14:00:00Z' }
@@ -58,6 +63,10 @@ export const MOCK_WORK_ORDERS: WorkOrder[] = [
     probability: 95,
     subtasks: [
       { id: 'S3', title: 'Replace outlet cover', isCompleted: false }
+    ],
+    materials: [
+      { id: 'M4', name: 'Outlet Cover Plate', status: 'RECEIVED', cost: 5.99 },
+      { id: 'M5', name: 'Wire Connectors', status: 'RECEIVED', cost: 2.50 }
     ],
     history: [
       { id: 'H4', userId: 'ADMIN_001', userName: 'Kevin Ryan', action: 'Created Work Order', timestamp: '2024-05-14T09:15:00Z' }

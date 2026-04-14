@@ -20,9 +20,9 @@ export const Employees: React.FC = () => {
   const [uploadedDocs, setUploadedDocs] = useState<Record<string, boolean>>({});
 
   const filteredEmployees = employees.filter(emp => 
-    emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.role.toLowerCase().includes(searchTerm.toLowerCase())
+    (emp.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (emp.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (emp.role || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const handleOpenAdd = () => {
@@ -74,8 +74,16 @@ export const Employees: React.FC = () => {
   };
 
   const handleEdit = (emp: Employee) => {
-    setEditingEmployee({ ...emp });
-    setUploadedDocs(Object.keys(emp.documents).reduce((acc, key) => ({ ...acc, [key]: true }), {}));
+    setEditingEmployee({ 
+      ...emp,
+      emergencyContact: emp.emergencyContact || { name: '', relationship: '', phone: '' },
+      education: emp.education || { school: '', schoolYear: '', college: '', collegeYear: '', university: '', universityYear: '', highestDegree: '' },
+      experience: emp.experience || { lastCompany: '', designation: '', yearsOfExperience: '', currentPosition: { department: '', designation: '', employeeId: '', salary: '', joinDate: '' } },
+      documents: emp.documents || {},
+      corporationAccess: emp.corporationAccess || [],
+      permissions: emp.permissions || []
+    });
+    setUploadedDocs(Object.keys(emp.documents || {}).reduce((acc, key) => ({ ...acc, [key]: true }), {}));
     setActiveTab('personal');
     setIsModalOpen(true);
   };
@@ -171,7 +179,7 @@ export const Employees: React.FC = () => {
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 text-sm font-bold">
-                      {emp.name.split(' ').map(n => n[0]).join('')}
+                      {(emp.name || '?').split(' ').map(n => n[0]).join('')}
                     </div>
                     <div>
                       <p className="font-bold text-slate-900">{emp.name}</p>
@@ -181,7 +189,7 @@ export const Employees: React.FC = () => {
                 </td>
                 <td className="px-6 py-4">
                   <p className="font-medium text-slate-700">{emp.role}</p>
-                  <p className="text-xs text-slate-500">{emp.experience.currentPosition.department || 'Unassigned'}</p>
+                  <p className="text-xs text-slate-500">{emp.experience?.currentPosition?.department || 'Unassigned'}</p>
                 </td>
                 <td className="px-6 py-4">
                   <div className="flex flex-col gap-1">
@@ -199,7 +207,7 @@ export const Employees: React.FC = () => {
                     emp.status === 'Pending Approval' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
                     'bg-slate-50 text-slate-700 border-slate-200'
                   }`}>
-                    {emp.status.toUpperCase()}
+                    {(emp.status || 'Unknown').toUpperCase()}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-right">
@@ -697,6 +705,9 @@ export const Employees: React.FC = () => {
                             { id: 'cvResume', label: 'CV / Resume' },
                             { id: 'sscCertificate', label: 'SSC Certificate' },
                             { id: 'hscCertificate', label: 'HSC Certificate' },
+                            { id: 'familyMembersPhotos', label: 'Family Members Photos' },
+                            { id: 'emergencyContactIdPhotos', label: 'Emergency Contact ID Photos' },
+                            { id: 'certificatePhotos', label: 'Other Certificate Photos' },
                           ].map(doc => (
                             <div key={doc.id} className="p-4 border border-slate-200 border-dashed rounded-2xl bg-slate-50 flex items-center justify-between group/doc">
                               <div className="flex items-center gap-3">
@@ -793,6 +804,11 @@ export const Employees: React.FC = () => {
                               { id: 'reports.view', label: 'View Reports' },
                               { id: 'settings.manage', label: 'Manage Settings' },
                               { id: 'automation.manage', label: 'Manage Automations' },
+                              { id: 'technicians.manage', label: 'Manage Technicians' },
+                              { id: 'scheduler.manage', label: 'Manage Scheduler' },
+                              { id: 'dispatch.manage', label: 'Manage Dispatch' },
+                              { id: 'chat.access', label: 'Access Chat' },
+                              { id: 'email.access', label: 'Access Email' },
                             ].map(perm => (
                               <button
                                 key={perm.id}

@@ -30,6 +30,19 @@ export interface UIComponent {
   props: any;
 }
 
+export interface WorkflowStep {
+  id: string;
+  type: 'trigger' | 'action' | 'condition' | 'delay';
+  label: string;
+  config: any;
+}
+
+export interface AppWorkflow {
+  id: string;
+  name: string;
+  steps: WorkflowStep[];
+}
+
 export interface AppManifest {
   id: string;
   name: string;
@@ -37,7 +50,7 @@ export interface AppManifest {
   layout: 'canvas' | 'grid';
   components: UIComponent[];
   agents: AIAgent[];
-  workflows: { id: string; name: string; steps: string[] }[];
+  workflows: AppWorkflow[];
 }
 
 const INITIAL_MANIFEST: AppManifest = {
@@ -56,7 +69,18 @@ const INITIAL_MANIFEST: AppManifest = {
       memory: []
     }
   ],
-  workflows: [],
+  workflows: [
+    {
+      id: 'wf_1',
+      name: 'Auto-Dispatch Flow',
+      steps: [
+        { id: 's1', type: 'trigger', label: 'New Work Order', config: {} },
+        { id: 's2', type: 'action', label: 'Analyze Technician Availability', config: {} },
+        { id: 's3', type: 'action', label: 'Assign & Notify', config: {} },
+        { id: 's4', type: 'action', label: 'Monitor Technician Availability', config: {} }
+      ]
+    }
+  ],
   components: [
     {
       id: 'c1',
@@ -72,6 +96,14 @@ const INITIAL_MANIFEST: AppManifest = {
       props: {
         agentId: 'agent_1',
         title: "Dispatch Agent Status"
+      }
+    },
+    {
+      id: 'c3',
+      type: "agent-node",
+      props: {
+        agentId: 'placeholder_agent',
+        title: "Agent Status"
       }
     }
   ]
@@ -90,11 +122,12 @@ export const AppBuilder: React.FC = () => {
   const [viewDevice, setViewDevice] = useState<'desktop' | 'mobile'>('desktop');
   const [deployStatus, setDeployStatus] = useState<'idle' | 'building' | 'live'>('idle');
   const [logs, setLogs] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<'build' | 'agents' | 'ai'>('ai');
+  const [activeTab, setActiveTab] = useState<'build' | 'agents' | 'workflows' | 'ai'>('ai');
   
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const selectedComponent = manifest.components.find(c => c.id === selectedId);
   const selectedAgent = manifest.agents.find(a => a.id === selectedId);
+  const selectedWorkflow = manifest.workflows.find(w => w.id === selectedId);
 
   useEffect(() => {
     if (chatScrollRef.current) {
@@ -125,7 +158,8 @@ export const AppBuilder: React.FC = () => {
         2. Create or update the structured App Manifest in JSON format.
         3. The manifest must include: id, name, theme, layout, components, agents, and workflows.
         4. Agents must have: id, name, role, systemInstruction, tools[], status, memory[].
-        5. Components supported: 
+        5. Workflows must have: id, name, steps[]. Steps have: id, type ('trigger'|'action'|'condition'|'delay'), label, config{}.
+        6. Components supported: 
            - 'header', 'stat', 'card', 'table', 'chart', 'form', 'button', 'agent-node', 'chat-widget'.
            - 'agent-node' connects to an agent via agentId.
 
@@ -212,7 +246,7 @@ export const AppBuilder: React.FC = () => {
         {/* LEFT PANEL */}
         <div className="w-80 border-r border-slate-800 flex flex-col shrink-0 bg-slate-900 z-20">
           <div className="flex border-b border-slate-800">
-            {['ai', 'agents', 'build'].map(tab => (
+            {['ai', 'agents', 'workflows', 'build'].map(tab => (
               <button 
                 key={tab}
                 onClick={() => setActiveTab(tab as any)}
@@ -300,6 +334,39 @@ export const AppBuilder: React.FC = () => {
                   </div>
                 ))}
               </div>
+            ) : activeTab === 'workflows' ? (
+              <div className="p-4 space-y-4">
+                <button 
+                  onClick={() => {
+                    const id = 'wf_' + Date.now();
+                    setManifest(prev => ({
+                      ...prev,
+                      workflows: [...prev.workflows, { id, name: 'New Workflow', steps: [] }]
+                    }));
+                    setSelectedId(id);
+                  }}
+                  className="w-full py-2 border border-dashed border-slate-700 rounded-xl text-slate-500 text-[10px] font-bold uppercase hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-3 h-3" /> Create New Workflow
+                </button>
+                {manifest.workflows.map(wf => (
+                  <div 
+                    key={wf.id}
+                    onClick={() => setSelectedId(wf.id)}
+                    className={`p-3 rounded-xl border transition-all cursor-pointer ${selectedId === wf.id ? 'bg-emerald-600/10 border-emerald-500/50' : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'}`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <Workflow className={`w-4 h-4 ${selectedId === wf.id ? 'text-emerald-400' : 'text-slate-500'}`} />
+                        <span className="text-xs font-bold text-slate-200">{wf.name}</span>
+                      </div>
+                      <span className="text-[8px] px-1.5 py-0.5 rounded-full font-bold uppercase bg-slate-700 text-slate-400">
+                        {wf.steps.length} Steps
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
               <div className="p-4 space-y-6">
                 <div>
@@ -333,7 +400,47 @@ export const AppBuilder: React.FC = () => {
           }`}>
             <div className={`bg-slate-900 shadow-2xl rounded-2xl overflow-hidden border border-slate-800 flex flex-col h-full relative ${viewDevice === 'mobile' ? 'rounded-[3rem] border-[10px] border-slate-800' : ''}`}>
               <div className="flex-1 p-8 space-y-6 overflow-y-auto custom-scrollbar">
-                {manifest.components.map((comp) => (
+                {activeTab === 'workflows' && selectedWorkflow ? (
+                  <div className="space-y-8 py-12 flex flex-col items-center">
+                    <div className="text-center mb-8">
+                      <h2 className="text-3xl font-black text-white tracking-tighter">{selectedWorkflow.name}</h2>
+                      <p className="text-slate-500 mt-2">Workflow Execution Logic</p>
+                    </div>
+                    
+                    {selectedWorkflow.steps.map((step, idx) => (
+                      <React.Fragment key={step.id}>
+                        <div className="w-full max-w-md bg-slate-800 border border-slate-700 p-6 rounded-2xl relative group hover:border-emerald-500/50 transition-all shadow-xl">
+                          <div className="flex items-center gap-4">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold ${
+                              step.type === 'trigger' ? 'bg-amber-500 text-white shadow-lg shadow-amber-500/20' :
+                              step.type === 'action' ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/20' :
+                              'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
+                            }`}>
+                              {idx + 1}
+                            </div>
+                            <div>
+                              <h4 className="text-base font-bold text-white">{step.label}</h4>
+                              <p className="text-xs text-slate-500 uppercase font-mono tracking-widest">{step.type}</p>
+                            </div>
+                          </div>
+                          
+                          {idx < selectedWorkflow.steps.length - 1 && (
+                            <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-px h-8 bg-gradient-to-b from-slate-700 to-transparent">
+                              <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-2 h-2 border-b border-r border-slate-700 rotate-45"></div>
+                            </div>
+                          )}
+                        </div>
+                      </React.Fragment>
+                    ))}
+                    
+                    {selectedWorkflow.steps.length === 0 && (
+                      <div className="flex flex-col items-center justify-center py-20 text-slate-600">
+                        <ZapOff className="w-12 h-12 mb-4 opacity-20" />
+                        <p className="text-sm font-medium">No steps defined for this workflow</p>
+                      </div>
+                    )}
+                  </div>
+                ) : manifest.components.map((comp) => (
                   <div 
                     key={comp.id} 
                     onClick={(e) => { e.stopPropagation(); setSelectedId(comp.id); }}
@@ -476,6 +583,97 @@ export const AppBuilder: React.FC = () => {
                           {tool}
                         </button>
                       ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : selectedWorkflow ? (
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Workflow Name</label>
+                    <input 
+                      value={selectedWorkflow.name}
+                      onChange={(e) => setManifest(prev => ({ ...prev, workflows: prev.workflows.map(w => w.id === selectedId ? { ...w, name: e.target.value } : w) }))}
+                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:ring-2 focus:ring-emerald-500 outline-none" 
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Steps</label>
+                    <div className="space-y-2">
+                      {selectedWorkflow.steps.map((step, idx) => (
+                        <div key={step.id} className="p-3 bg-slate-950 border border-slate-800 rounded-xl flex flex-col gap-3">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                              step.type === 'trigger' ? 'bg-amber-500/20 text-amber-400' :
+                              step.type === 'action' ? 'bg-emerald-500/20 text-emerald-400' :
+                              step.type === 'condition' ? 'bg-purple-500/20 text-purple-400' :
+                              'bg-blue-500/20 text-blue-400'
+                            }`}>
+                              {idx + 1}
+                            </div>
+                            <div className="flex-1 flex gap-2">
+                              <select
+                                value={step.type}
+                                onChange={(e) => {
+                                  const steps = selectedWorkflow.steps.map(s => s.id === step.id ? { ...s, type: e.target.value as any } : s);
+                                  setManifest(prev => ({ ...prev, workflows: prev.workflows.map(w => w.id === selectedId ? { ...w, steps } : w) }));
+                                }}
+                                className="bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-300 p-1 outline-none focus:border-emerald-500"
+                              >
+                                <option value="trigger">Trigger</option>
+                                <option value="action">Action</option>
+                                <option value="condition">Condition</option>
+                                <option value="delay">Delay</option>
+                              </select>
+                              <input
+                                value={step.label}
+                                onChange={(e) => {
+                                  const steps = selectedWorkflow.steps.map(s => s.id === step.id ? { ...s, label: e.target.value } : s);
+                                  setManifest(prev => ({ ...prev, workflows: prev.workflows.map(w => w.id === selectedId ? { ...w, steps } : w) }));
+                                }}
+                                placeholder="Step Label"
+                                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-300 p-1 px-2 outline-none focus:border-emerald-500"
+                              />
+                            </div>
+                            <button 
+                              onClick={() => {
+                                const steps = selectedWorkflow.steps.filter(s => s.id !== step.id);
+                                setManifest(prev => ({ ...prev, workflows: prev.workflows.map(w => w.id === selectedId ? { ...w, steps } : w) }));
+                              }}
+                              className="text-slate-600 hover:text-rose-500 transition-colors shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div className="pl-9">
+                            <input
+                              value={JSON.stringify(step.config || {})}
+                              onChange={(e) => {
+                                try {
+                                  const config = JSON.parse(e.target.value);
+                                  const steps = selectedWorkflow.steps.map(s => s.id === step.id ? { ...s, config } : s);
+                                  setManifest(prev => ({ ...prev, workflows: prev.workflows.map(w => w.id === selectedId ? { ...w, steps } : w) }));
+                                } catch (err) {
+                                  // Ignore invalid JSON while typing
+                                }
+                              }}
+                              placeholder="Config (JSON)"
+                              className="w-full bg-slate-900 border border-slate-700 rounded-lg text-[10px] text-slate-400 p-1.5 font-mono outline-none focus:border-emerald-500"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                      <button 
+                        onClick={() => {
+                          const newStep: WorkflowStep = { id: 's_' + Date.now(), type: 'action', label: 'New Step', config: {} };
+                          const steps = [...selectedWorkflow.steps, newStep];
+                          setManifest(prev => ({ ...prev, workflows: prev.workflows.map(w => w.id === selectedId ? { ...w, steps } : w) }));
+                        }}
+                        className="w-full py-2 border border-dashed border-slate-800 rounded-xl text-slate-600 text-[10px] font-bold uppercase hover:bg-slate-800 transition-all"
+                      >
+                        + Add Step
+                      </button>
                     </div>
                   </div>
                 </div>

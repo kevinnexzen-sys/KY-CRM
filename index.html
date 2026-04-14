@@ -17,6 +17,11 @@
       ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
       ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
       .leaflet-container { height: 100%; width: 100%; z-index: 0; }
+      
+      @keyframes slideRight {
+        0% { transform: translateX(-100%); }
+        100% { transform: translateX(300%); }
+      }
     </style>
   <script type="importmap">
 {
